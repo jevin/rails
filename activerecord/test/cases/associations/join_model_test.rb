@@ -780,7 +780,6 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
 
   def test_scoped_association_does_not_push_where_conditions_into_join_clause
     association = Author.joins(:hello_posts)
-    puts association.to_sql
 
     assert_includes association.to_sql, 'INNER JOIN "posts" ON "posts"."author_id" = "authors"."id"'
     assert_includes association.to_sql, "WHERE (posts.body = 'hello')"

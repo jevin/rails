@@ -1913,7 +1913,7 @@ module ActiveRecord
           join_dependency = construct_join_dependency(named_joins, join_type)
           _, extracted_predicates = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
 
-          arel.where(Arel::Nodes::And.new(extracted_predicates)) unless extracted_predicates.empty?
+          arel.where(extracted_predicates) if extracted_predicates
         end
 
         arel.where(where_clause.ast) unless where_clause.empty?

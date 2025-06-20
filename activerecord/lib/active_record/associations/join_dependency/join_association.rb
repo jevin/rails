@@ -24,7 +24,7 @@ module ActiveRecord
         def join_constraints(foreign_table, foreign_klass, join_type, alias_tracker)
           joins = []
           chain = []
-          others = nil
+          others = []
 
           reflection_chain = reflection.chain
           reflection_chain.each_with_index do |reflection, index|
