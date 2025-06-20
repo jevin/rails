@@ -21,9 +21,10 @@ module ActiveRecord
           super && reflection == other.reflection
         end
 
-        def join_constraints(foreign_table, foreign_klass, join_type, alias_tracker, where_clauses_only = false)
+        def join_constraints(foreign_table, foreign_klass, join_type, alias_tracker)
           joins = []
           chain = []
+          others = nil
 
           reflection_chain = reflection.chain
           reflection_chain.each_with_index do |reflection, index|
@@ -62,21 +63,18 @@ module ActiveRecord
               end
             end
 
-            if !where_clauses_only
-              joins << join_type.new(table, Arel::Nodes::On.new(nodes))
-            end
+            joins << join_type.new(table, Arel::Nodes::On.new(nodes))
 
-            if where_clauses_only && others && !others.empty?
-              # joins.concat arel.join_sources
-              # return append_constraints(joins.last, others)
-              return others
-            end
+            # if others && !others.empty?
+            #   joins.concat arel.join_sources
+            #   return append_constraints(joins.last, others)
+            # end
 
             # The current table in this iteration becomes the foreign table in the next
             foreign_table, foreign_klass = table, klass
           end
 
-          joins
+          [joins, others]
         end
 
         def readonly?

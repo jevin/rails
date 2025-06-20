@@ -82,7 +82,7 @@ module ActiveRecord
         join_root.drop(1).map!(&:reflection)
       end
 
-      def join_constraints(joins_to_add, alias_tracker, references, where_clauses_only = false)
+      def join_constraints(joins_to_add, alias_tracker, references)
         @alias_tracker = alias_tracker
         @joined_tables = {}
         @references = {}
@@ -91,13 +91,13 @@ module ActiveRecord
           @references[table_name.to_sym] = table_name if table_name.is_a?(Arel::Nodes::SqlLiteral)
         end unless references.empty?
 
-        joins = make_join_constraints(join_root, join_type, where_clauses_only)
+        joins = make_join_constraints(join_root, join_type)
 
         joins.concat joins_to_add.flat_map { |oj|
           if join_root.match? oj.join_root
             walk(join_root, oj.join_root, oj.join_type)
           else
-            make_join_constraints(oj.join_root, oj.join_type, where_clauses_only)
+            make_join_constraints(oj.join_root, oj.join_type)
           end
         }
       end
@@ -181,16 +181,16 @@ module ActiveRecord
           }
         end
 
-        def make_join_constraints(join_root, join_type, where_clauses_only)
+        def make_join_constraints(join_root, join_type)
           join_root.children.flat_map do |child|
-            make_constraints(join_root, child, join_type, where_clauses_only)
+            make_constraints(join_root, child, join_type)
           end
         end
 
-        def make_constraints(parent, child, join_type, where_clauses_only)
+        def make_constraints(parent, child, join_type)
           foreign_table = parent.table
           foreign_klass = parent.base_klass
-          child.join_constraints(foreign_table, foreign_klass, join_type, alias_tracker, where_clauses_only) do |reflection, remaining_reflection_chain|
+          child.join_constraints(foreign_table, foreign_klass, join_type, alias_tracker) do |reflection, remaining_reflection_chain|
             table, terminated = @joined_tables[remaining_reflection_chain]
             root = reflection == child.reflection
 

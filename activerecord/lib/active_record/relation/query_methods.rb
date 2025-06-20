@@ -1892,7 +1892,8 @@ module ActiveRecord
         unless named_joins.empty? && stashed_joins.empty?
           alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
           join_dependency = construct_join_dependency(named_joins, join_type)
-          join_sources.concat(join_dependency.join_constraints(stashed_joins, alias_tracker, references_values))
+          join_constraints, extracted_predicates = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
+          join_sources.concat(join_constraints)
         end
 
         join_sources.concat(join_nodes) unless join_nodes.empty?
@@ -1912,7 +1913,8 @@ module ActiveRecord
         unless named_joins.empty? && stashed_joins.empty?
           alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
           join_dependency = construct_join_dependency(named_joins, join_type)
-          join_where_clause.concat(join_dependency.join_constraints(stashed_joins, alias_tracker, references_values, true))
+          join_nodes, extracted_predicates = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
+          join_where_clause.concat(extracted_predicates)
         end
 
         arel.where(Arel::Nodes::And.new(join_where_clause)) unless join_where_clause.empty?
