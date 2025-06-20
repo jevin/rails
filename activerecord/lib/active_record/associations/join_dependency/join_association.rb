@@ -65,10 +65,9 @@ module ActiveRecord
 
             joins << join_type.new(table, Arel::Nodes::On.new(nodes))
 
-            # if others && !others.empty?
-            #   joins.concat arel.join_sources
-            #   return append_constraints(joins.last, others)
-            # end
+            if others && !others.empty?
+              others = Arel::Nodes::And.new(others)
+            end
 
             # The current table in this iteration becomes the foreign table in the next
             foreign_table, foreign_klass = table, klass
