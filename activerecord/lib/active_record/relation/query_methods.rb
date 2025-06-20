@@ -1755,7 +1755,8 @@ module ActiveRecord
 
         build_joins(arel.join_sources, aliases)
 
-        arel.where(where_clause.ast) unless where_clause.empty?
+        build_where(arel, arel.join_sources, aliases)
+
         arel.having(having_clause.ast) unless having_clause.empty?
         arel.take(build_cast_value("LIMIT", connection.sanitize_limit(limit_value))) if limit_value
         arel.skip(build_cast_value("OFFSET", offset_value.to_i)) if offset_value
@@ -1896,6 +1897,26 @@ module ActiveRecord
 
         join_sources.concat(join_nodes) unless join_nodes.empty?
         join_sources
+      end
+
+      def build_where(arel, join_sources, aliases = nil)
+        join_where_clause = []
+
+        buckets, join_type = build_join_buckets
+
+        named_joins   = buckets[:named_join]
+        stashed_joins = buckets[:stashed_join]
+        leading_joins = buckets[:leading_join]
+        join_nodes    = buckets[:join_node]
+
+        unless named_joins.empty? && stashed_joins.empty?
+          alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
+          join_dependency = construct_join_dependency(named_joins, join_type)
+          join_where_clause.concat(join_dependency.join_constraints(stashed_joins, alias_tracker, references_values, true))
+        end
+
+        arel.where(Arel::Nodes::And.new(join_where_clause)) unless join_where_clause.empty?
+        arel.where(where_clause.ast) unless where_clause.empty?
       end
 
       def build_select(arel)

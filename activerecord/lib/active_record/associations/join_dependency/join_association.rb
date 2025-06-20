@@ -21,7 +21,7 @@ module ActiveRecord
           super && reflection == other.reflection
         end
 
-        def join_constraints(foreign_table, foreign_klass, join_type, alias_tracker)
+        def join_constraints(foreign_table, foreign_klass, join_type, alias_tracker, where_clauses_only = false)
           joins = []
           chain = []
 
@@ -62,11 +62,14 @@ module ActiveRecord
               end
             end
 
-            joins << join_type.new(table, Arel::Nodes::On.new(nodes))
+            if !where_clauses_only
+              joins << join_type.new(table, Arel::Nodes::On.new(nodes))
+            end
 
-            if others && !others.empty?
-              joins.concat arel.join_sources
-              append_constraints(joins.last, others)
+            if where_clauses_only && others && !others.empty?
+              # joins.concat arel.join_sources
+              # return append_constraints(joins.last, others)
+              return others
             end
 
             # The current table in this iteration becomes the foreign table in the next
