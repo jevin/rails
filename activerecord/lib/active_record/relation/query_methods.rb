@@ -1912,11 +1912,22 @@ module ActiveRecord
           alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
           join_dependency = construct_join_dependency(named_joins, join_type)
           _, extracted_predicates = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
-
-          arel.where(extracted_predicates) if extracted_predicates
         end
 
-        arel.where(where_clause.ast) unless where_clause.empty?
+        conditions = []
+
+        conditions.concat(extracted_predicates) if extracted_predicates
+        conditions << where_clause.ast unless where_clause.empty?
+
+        combined_where =
+          case conditions.size
+          when 0 then nil
+          when 1 then conditions.first
+          else Arel::Nodes::And.new(conditions)
+          end
+
+
+        arel.where(combined_where) if combined_where
       end
 
       def build_select(arel)
