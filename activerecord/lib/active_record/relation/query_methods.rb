@@ -1755,7 +1755,8 @@ module ActiveRecord
 
         build_joins(arel.join_sources, aliases)
 
-        arel.where(where_clause.ast) unless where_clause.empty?
+        build_where(arel, arel.join_sources, aliases)
+
         arel.having(having_clause.ast) unless having_clause.empty?
         arel.take(build_cast_value("LIMIT", connection.sanitize_limit(limit_value))) if limit_value
         arel.skip(build_cast_value("OFFSET", offset_value.to_i)) if offset_value
@@ -1891,11 +1892,42 @@ module ActiveRecord
         unless named_joins.empty? && stashed_joins.empty?
           alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
           join_dependency = construct_join_dependency(named_joins, join_type)
-          join_sources.concat(join_dependency.join_constraints(stashed_joins, alias_tracker, references_values))
+          join_constraints, _ = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
+          join_sources.concat(join_constraints)
         end
 
         join_sources.concat(join_nodes) unless join_nodes.empty?
         join_sources
+      end
+
+      def build_where(arel, join_sources, aliases = nil)
+        buckets, join_type = build_join_buckets
+
+        named_joins   = buckets[:named_join]
+        stashed_joins = buckets[:stashed_join]
+        leading_joins = buckets[:leading_join]
+        join_nodes    = buckets[:join_node]
+
+        unless named_joins.empty? && stashed_joins.empty?
+          alias_tracker = alias_tracker(leading_joins + join_nodes, aliases)
+          join_dependency = construct_join_dependency(named_joins, join_type)
+          _, extracted_predicates = join_dependency.join_constraints(stashed_joins, alias_tracker, references_values)
+        end
+
+        conditions = []
+
+        conditions.concat(extracted_predicates) if extracted_predicates
+        conditions << where_clause.ast unless where_clause.empty?
+
+        combined_where =
+          case conditions.size
+          when 0 then nil
+          when 1 then conditions.first
+          else Arel::Nodes::And.new(conditions)
+          end
+
+
+        arel.where(combined_where) if combined_where
       end
 
       def build_select(arel)

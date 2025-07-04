@@ -778,6 +778,13 @@ class AssociationsJoinModelTest < ActiveRecord::TestCase
     end
   end
 
+  def test_scoped_association_does_not_push_where_conditions_into_join_clause
+    association = Author.joins(:hello_posts)
+
+    assert_includes association.to_sql, 'INNER JOIN "posts" ON "posts"."author_id" = "authors"."id"'
+    assert_includes association.to_sql, "WHERE (posts.body = 'hello')"
+  end
+
   private
     # create dynamic Post models to allow different dependency options
     def find_post_with_dependency(post_id, association, association_name, dependency)

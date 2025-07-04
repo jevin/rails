@@ -91,15 +91,18 @@ module ActiveRecord
           @references[table_name.to_sym] = table_name if table_name.is_a?(Arel::Nodes::SqlLiteral)
         end unless references.empty?
 
-        joins = make_join_constraints(join_root, join_type)
+        join_constraints, extracted_predicates = make_join_constraints(join_root, join_type).transpose
 
-        joins.concat joins_to_add.flat_map { |oj|
-          if join_root.match? oj.join_root
-            walk(join_root, oj.join_root, oj.join_type)
-          else
-            make_join_constraints(oj.join_root, oj.join_type)
-          end
-        }
+        [
+          join_constraints.concat(joins_to_add.flat_map { |oj|
+            if join_root.match? oj.join_root
+              walk(join_root, oj.join_root, oj.join_type)
+            else
+              make_join_constraints(oj.join_root, oj.join_type)
+            end
+          }),
+          extracted_predicates
+        ]
       end
 
       def instantiate(result_set, strict_loading_value, &block)
@@ -182,7 +185,7 @@ module ActiveRecord
         end
 
         def make_join_constraints(join_root, join_type)
-          join_root.children.flat_map do |child|
+          join_root.children.map do |child|
             make_constraints(join_root, child, join_type)
           end
         end
@@ -190,7 +193,7 @@ module ActiveRecord
         def make_constraints(parent, child, join_type)
           foreign_table = parent.table
           foreign_klass = parent.base_klass
-          child.join_constraints(foreign_table, foreign_klass, join_type, alias_tracker) do |reflection, remaining_reflection_chain|
+          join_constraints, extracted_predicates = child.join_constraints(foreign_table, foreign_klass, join_type, alias_tracker) do |reflection, remaining_reflection_chain|
             table, terminated = @joined_tables[remaining_reflection_chain]
             root = reflection == child.reflection
 
@@ -208,7 +211,12 @@ module ActiveRecord
 
             @joined_tables[remaining_reflection_chain] ||= [table, root] if join_type == Arel::Nodes::OuterJoin
             table
-          end.concat child.children.flat_map { |c| make_constraints(child, c, join_type) }
+          end
+
+          [
+            join_constraints.concat(child.children.flat_map { |c| make_constraints(child, c, join_type) }),
+            extracted_predicates
+          ]
         end
 
         def walk(left, right, join_type)
